@@ -1,0 +1,12 @@
+jflex\Lexer.class
+views\ViewPrincipal.class
+presenter\PresenterViewPrincipal.class
+cup\parser.class
+cup\sym.class
+ufes\Main.class
+model\TabelaDeSimbolo.class
+ufes\Analisador.class
+views\ViewPrincipal$1.class
+cup\parser$CUP$parser$actions.class
+presenter\PresenterViewPrincipal$1.class
+model\Token.class
