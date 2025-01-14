@@ -1,13 +1,7 @@
 package presenter;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.*;
 import java.util.ListIterator;
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
-import javax.swing.filechooser.FileFilter;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 
 import model.TabelaDeSimbolo;
@@ -29,51 +23,13 @@ public class MainPresenter {
                 new String[]{"Token", "Lexema"}
         );
 
-        this.view.getBtnSelecionar().addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                JFileChooser fileopen = new JFileChooser();
-                FileFilter filter = new FileNameExtensionFilter("c files", "c");
-                fileopen.addChoosableFileFilter(filter);
-
-                int ret = fileopen.showDialog(null, "Open file");
-
-                if (ret == JFileChooser.APPROVE_OPTION) {
-                    File file = fileopen.getSelectedFile();
-                    if (file.toString().contains(".c")) {
-                        view.getTfCaminho().setText(file.toString());
-
-                        FileInputStream fis = null;
-                        String texto = "";
-
-                        try {
-                            fis = new FileInputStream(file);
-                            int content;
-                            while ((content = fis.read()) != -1) {
-                                texto += (char) content;
-                            }
-                        } catch (IOException exp) {
-                            exp.printStackTrace();
-                        } finally {
-                            try {
-                                if (fis != null) {
-                                    fis.close();
-                                }
-                            } catch (IOException ex) {
-                                ex.printStackTrace();
-                            }
-                        }
-                        view.getTaCodigo().setText(texto);
-
-                    } else {
-                        JOptionPane.showMessageDialog(view, "Erro! Arquivo precisa ter extensão .C");
-                    }
-                }
-            }
-        });
-
         this.view.getBtnAnalisar().addActionListener(e -> {
-            File arquivo = new File(view.getTfCaminho().getText());
+            File diretorio = new File("src/dados");
+            if (!diretorio.exists()) {
+                diretorio.mkdirs();
+            }
+
+            File arquivo = new File(diretorio, "codigo.c");
             PrintWriter pw;
             try {
                 pw = new PrintWriter(arquivo);
@@ -81,17 +37,20 @@ public class MainPresenter {
                 pw.close();
             } catch (FileNotFoundException fileNotFoundException) {
                 fileNotFoundException.printStackTrace();
+                view.getTaMensagem().setText("Erro ao salvar o arquivo.");
+                return;
             }
+
             Analisador analisador = new Analisador();
             TabelaDeSimbolo tabela;
             try {
                 tabela = analisador.analisarSintatica(arquivo);
                 preencheTabela(tabela);
-                view.getTaMensagem().setText("Análise Concluida!");
+                view.getTaMensagem().setText("Análise Concluída!");
             } catch (RuntimeException ex) {
                 view.getTaMensagem().setText(ex.getMessage());
             } catch (IOException ex) {
-                view.getTaMensagem().setText("Erro ao ler arquivo");
+                view.getTaMensagem().setText("Erro ao ler o arquivo.");
             } catch (Exception ex) {
                 view.getTaMensagem().setText(ex.getMessage());
             }
