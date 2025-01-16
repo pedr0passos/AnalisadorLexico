@@ -1,0 +1,43 @@
+PARSER_BEGIN(SimpleParser)
+
+public class SimpleParser {
+    public static void main(String[] args) throws ParseException {
+        SimpleParser parser = new SimpleParser(System.in);
+        parser.Start();
+    }
+}
+
+PARSER_END(SimpleParser)
+
+SKIP : { " " | "\t" | "\n" | "\r" }
+
+TOKEN : {
+    < #DIGIT: ["0"-"9"] >
+  | < LETTER: ["a"-"z", "A"-"Z"] >
+  | < NUMBER: (<DIGIT>)+ >
+  | < IDENTIFIER: (<LETTER>)+ >
+  | < ADD: "+" >
+  | < SUB: "-" >
+  | < MUL: "*" >
+  | < DIV: "/" >
+  | < LPAREN: "(" >
+  | < RPAREN: ")" >
+  | < SEMICOLON: ";" >
+}
+
+void Start() : {} {
+    ( Expression() )*
+}
+
+void Expression() : {} {
+    Term() ( ( <ADD> | <SUB> ) Term() )*
+}
+
+void Term() : {} {
+    Factor() ( ( <MUL> | <DIV> ) Factor() )*
+}
+
+void Factor() : {} {
+    <NUMBER> | <IDENTIFIER> | <LPAREN> Expression() <RPAREN>
+}
+

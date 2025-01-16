@@ -1,41 +1,32 @@
 package model;
 
-import cup.sym;
-
 public class Token {
+    private String tipo;
+    private String lexema;
 
-    private String nome;
-    private String valor;
-
-    public Token(int nome, String valor) {
-        setNome(nome);
-        this.valor = valor;
+    public Token(String tipo, String lexema) {
+        this.tipo = tipo;
+        this.lexema = lexema;
     }
 
-    public String getNome() {
-        return nome;
+    public String getTipo() {
+        return tipo;
     }
 
-    public void setNome(int token) {
-        nome = getTokenName(token);
+    public void setTipo(String tipo) {
+        this.tipo = tipo;
     }
 
-    public String getValor() {
-        return valor;
+    public String getLexema() {
+        return lexema;
     }
 
-    private String getTokenName(int token) {
-        try {
-            java.lang.reflect.Field[] classFields = sym.class.getFields();
-            for (int i = 0; i < classFields.length; i++) {
-                if (classFields[i].getInt(null) == token) {
-                    return classFields[i].getName();
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace(System.err);
-        }
+    public void setLexema(String lexema) {
+        this.lexema = lexema;
+    }
 
-        return "UNKNOWN TOKEN";
+    @Override
+    public String toString() {
+        return "Token{" + "tipo='" + tipo + '\'' + ", lexema='" + lexema + '\'' + '}';
     }
 }

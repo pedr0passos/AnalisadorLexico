@@ -1,73 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <groupId>com.ufes</groupId>
     <artifactId>AnalisadorLexico</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
         <exec.mainClass>com.ufes.analisadorlexico.AnalisadorLexico</exec.mainClass>
     </properties>
-    
-        <dependencies>
-        <dependency>
-            <groupId>com.github.vbmacher</groupId>
-            <artifactId>java-cup</artifactId>
-            <version>11b</version>
-        </dependency>
-        <dependency>
-            <groupId>de.jflex</groupId>
-            <artifactId>jflex</artifactId>
-            <version>1.8.2</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fifesoft</groupId>
-            <artifactId>rsyntaxtextarea</artifactId>
-            <version>3.1.2</version>
-        </dependency>
-                <dependency>
-                        <groupId>org.netbeans.external</groupId>
-                        <artifactId>AbsoluteLayout</artifactId>
-                        <version>RELEASE240</version>
-                </dependency>
-        </dependencies>
 
     <build>
         <plugins>
+            <!-- Plugin para JavaCC -->
             <plugin>
-                <groupId>de.jflex</groupId>
-                <artifactId>jflex-maven-plugin</artifactId>
-                <version>1.8.2</version>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>javacc-maven-plugin</artifactId>
+                <version>3.0.1</version>
                 <executions>
                     <execution>
+                        <id>javacc</id>
                         <goals>
-                            <goal>generate</goal>
+                            <goal>javacc</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>src/main/java</outputDirectory>
+                            <inputDirectory>src/main/javacc</inputDirectory>
+                            <outputDirectory>${project.build.directory}/generated-sources/javacc</outputDirectory>
+                            <lookAhead>2</lookAhead>
+                            <isStatic>false</isStatic>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Plugin para configurar o caminho de fontes geradas -->
             <plugin>
-                <groupId>de.jflex</groupId>
-                <artifactId>cup-maven-plugin</artifactId>
-                <version>1.2</version>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
                         <goals>
-                            <goal>generate</goal>
+                            <goal>add-source</goal>
                         </goals>
                         <configuration>
-                            <generatedSourcesDirectory>src/main/java</generatedSourcesDirectory>
-                            <symbolInterface>true</symbolInterface>
+                            <sources>
+                                <source>${project.build.directory}/generated-sources/javacc</source>
+                            </sources>
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- Plugin de compilação -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <release>17</release>
+                </configuration>
             </plugin>
         </plugins>
     </build>
-    
+
+    <dependencies>
+        <!-- Dependência do JavaCC -->
+        <dependency>
+            <groupId>net.java.dev.javacc</groupId>
+            <artifactId>javacc</artifactId>
+            <version>7.0.13</version>
+        </dependency>
+    </dependencies>
 </project>

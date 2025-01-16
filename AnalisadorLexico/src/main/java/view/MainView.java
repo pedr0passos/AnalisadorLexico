@@ -1,16 +1,45 @@
 package view;
 
+import java.util.List;
+import javacc.ParseException;
 import javax.swing.JButton;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
-import javax.swing.JTextField;
+import javax.swing.table.DefaultTableModel;
+import model.Token;
+import service.AnalisadorService;
 
 public class MainView extends javax.swing.JFrame {
 
     public MainView() {
         initComponents();
+
+        btnAnalisar.addActionListener(evt -> {
+            try {
+                String codigo = taCodigo.getText();
+
+                AnalisadorService analisadorService = new AnalisadorService();
+                List<Token> tokens = analisadorService.analisarCodigo(codigo);
+
+                atualizarTabela(tokens);
+
+                taMensagem.setText("Análise concluída sem erros.");
+            } catch (ParseException e) {
+                taMensagem.setText("Erro de análise: " + e.getMessage());
+            }
+        });
+
     }
 
+    private void atualizarTabela(List<Token> tokens) {
+        DefaultTableModel modelo = (DefaultTableModel) tbSimbolos.getModel();
+        modelo.setRowCount(0); 
+
+        for (Token token : tokens) {
+            modelo.addRow(new Object[]{token.getTipo(), token.getLexema()});
+        }
+    }
+    
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -111,7 +140,7 @@ public class MainView extends javax.swing.JFrame {
         return btnAnalisar;
     }
 
-    public JTextArea getTaCodigo() {;;
+    public JTextArea getTaCodigo() {
         return taCodigo;
     }
 

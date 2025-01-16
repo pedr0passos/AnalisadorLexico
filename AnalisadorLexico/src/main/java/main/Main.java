@@ -1,15 +1,13 @@
 package main;
 
-import presenter.MainPresenter;
-
-/**
- *
- * @author pedro, joao, catterina, ruan
- */
+import view.MainView;
 
 public class Main {
-
     public static void main(String[] args) {
-        new MainPresenter();
+        java.awt.EventQueue.invokeLater(new Runnable() {
+            public void run() {
+                new MainView().setVisible(true);
+            }
+        });
     }
 }
