@@ -1,4 +1,7 @@
+
 PARSER_BEGIN(SimpleParser)
+
+package javacc;
 
 public class SimpleParser {
     public static void main(String[] args) throws ParseException {

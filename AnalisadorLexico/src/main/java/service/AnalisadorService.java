@@ -5,6 +5,9 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import javacc.ParseException;
+import javacc.SimpleParser;
+import javacc.SimpleParserConstants;
 
 public class AnalisadorService {
 
