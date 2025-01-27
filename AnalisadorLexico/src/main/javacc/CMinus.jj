@@ -1,3 +1,6 @@
+options {
+    LOOKAHEAD = 2;
+}
 
 PARSER_BEGIN(SimpleParser)
 
@@ -15,32 +18,238 @@ PARSER_END(SimpleParser)
 SKIP : { " " | "\t" | "\n" | "\r" }
 
 TOKEN : {
-    < #DIGIT: ["0"-"9"] >
-  | < LETTER: ["a"-"z", "A"-"Z"] >
-  | < NUMBER: (<DIGIT>)+ >
-  | < IDENTIFIER: (<LETTER>)+ >
+    < DEFINE: "#define" >
+  | < #DIGIT: ["0"-"9"] >
+  | < #LETTER: ["a"-"z", "A"-"Z", "_"] >
+  | < NUMBER: (<DIGIT>)+ ("." (<DIGIT>)+)? >
   | < ADD: "+" >
   | < SUB: "-" >
   | < MUL: "*" >
   | < DIV: "/" >
+  | < MOD: "%" >
   | < LPAREN: "(" >
   | < RPAREN: ")" >
   | < SEMICOLON: ";" >
+  | < AUTO: "auto" >
+  | < STATIC: "static" >
+  | < EXTERN: "extern" >
+  | < CONST: "const" >
+  | < VOID: "void" >
+  | < CHAR: "char" >
+  | < FLOAT: "float" >
+  | < DOUBLE: "double" >
+  | < SIGNED: "signed" >
+  | < UNSIGNED: "unsigned" >
+  | < SHORT: "short" >
+  | < INT: "int" >
+  | < LONG: "long" >
+  | < RETURN: "return" >
+  | < PRINTF: "printf" >
+  | < SCANF: "scanf" >
+  | < BREAK: "break" >
+  | < IF: "if" >
+  | < ELSE: "else" >
+  | < OR: "||" >
+  | < AND: "&&" >
+  | < EQ: "==" >
+  | < NEQ: "!=" >
+  | < LT: "<" >
+  | < LTE: "<=" >
+  | < GT: ">" >
+  | < GTE: ">=" >
+  | < ASSIGN: "=" >
+  | < PLUS_ASSIGN: "+=" >
+  | < MINUS_ASSIGN: "-=" >
+  | < MUL_ASSIGN: "*=" >
+  | < DIV_ASSIGN: "/=" >
+  | < MOD_ASSIGN: "%=" >
+  | < COMMA: "," >
+  | < LBRACKET: "[" >
+  | < RBRACKET: "]" >
+  | < LBRACE: "{" >
+  | < RBRACE: "}" >
+  | < DOT: "." >
+  | < LITERAL: "\"" (~["\""])* "\"" >
+  | < IDENTIFIER: (<LETTER>)(<LETTER> | <DIGIT>)* >
 }
 
 void Start() : {} {
-    ( Expression() )*
+    Programa()
 }
 
-void Expression() : {} {
-    Term() ( ( <ADD> | <SUB> ) Term() )*
+void Programa() : {} {
+    (
+        Especificador() Tipo() <IDENTIFIER> Programa2()
+      | <DEFINE> <IDENTIFIER> <NUMBER> <SEMICOLON> Programa()
+    )
 }
 
-void Term() : {} {
-    Factor() ( ( <MUL> | <DIV> ) Factor() )*
+
+void Especificador() : {} {
+    ( <AUTO> | <STATIC> | <EXTERN> | <CONST> )?
 }
 
-void Factor() : {} {
-    <NUMBER> | <IDENTIFIER> | <LPAREN> Expression() <RPAREN>
+void Tipo() : {} {
+    (
+        <VOID> | <CHAR> | <FLOAT> | <DOUBLE>
+      | <SIGNED> Inteiro()
+      | <UNSIGNED> Inteiro()
+      | Inteiro()
+    )
 }
 
+void Inteiro() : {} {
+    ( <SHORT> | <INT> | <LONG> )
+}
+
+void Programa2() : {} {
+    (
+        <SEMICOLON> Programa()
+      | <LBRACKET> <NUMBER> <RBRACKET> <SEMICOLON> Programa()
+      | <LPAREN> ListaParametros() <RPAREN> Bloco() Programa()
+      | <COMMA> ListaID() Programa()
+    )
+}
+
+void ListaID() : {} {
+    <IDENTIFIER> DeclaracaoParam2() ListaIDTail()
+}
+
+void ListaIDTail() : {} {
+    ( <SEMICOLON> | <COMMA> ListaID() )?
+}
+
+void ListaParametros() : {} {
+    ( ListaParamRestante() )?
+}
+
+void ListaParamRestante() : {} {
+    DeclaracaoParam() DeclParamRestante()
+}
+
+void DeclaracaoParam() : {} {
+    Tipo() <IDENTIFIER> DeclaracaoParam2()
+}
+
+void DeclaracaoParam2() : {} {
+    ( <LBRACKET> <NUMBER> <RBRACKET> )?
+}
+
+void DeclParamRestante() : {} {
+    ( <COMMA> ListaParamRestante() )?
+}
+
+void Bloco() : {} {
+    ( <LBRACE> ConjuntoInst() <RBRACE> | <SEMICOLON> ConjuntoInst() )
+}
+
+void ConjuntoInst() : {} {
+    ( Programa() | Instrucoes() )*
+}
+
+void Instrucoes() : {} {
+    (
+        <IDENTIFIER> Expressao() <SEMICOLON>
+      | <RETURN> Expr() <SEMICOLON>
+      | <PRINTF> <LPAREN> Expr() <RPAREN> <SEMICOLON>
+      | <SCANF> <LPAREN> <IDENTIFIER> <RPAREN> <SEMICOLON>
+      | <BREAK> <SEMICOLON>
+      | <IF> <LPAREN> Expr() <RPAREN> Instrucoes() InstrucoesIf()
+    )
+}
+
+void InstrucoesIf() : {} {
+    ( <ELSE> Instrucoes() )?
+}
+
+void Expressao() : {} {
+    (
+        Atribuicao()
+      | <LBRACKET> Expr() <RBRACKET> Atribuicao()
+      | <LPAREN> ExprList() <RPAREN>
+    )?
+}
+
+void Atribuicao() : {} {
+    OperadorAtrib() Expr()
+}
+
+void OperadorAtrib() : {} {
+    ( <ASSIGN> | <MUL_ASSIGN> | <DIV_ASSIGN> | <MOD_ASSIGN> | <PLUS_ASSIGN> | <MINUS_ASSIGN> )
+}
+
+void Expr() : {} {
+    ExprAnd() ExprOr()
+}
+
+void ExprList() : {} {
+    ( Expr() ExprListTail() )?
+}
+
+void ExprListTail() : {} {
+    ( <COMMA> ExprList() )?
+}
+
+void ExprOr() : {} {
+    ( <OR> ExprAnd() ExprOr() )?
+}
+
+void ExprAnd() : {} {
+    ExprEqual() ExprAnd2()
+}
+
+void ExprAnd2() : {} {
+    ( <AND> ExprEqual() ExprAnd2() )?
+}
+
+void ExprEqual() : {} {
+    ExprRelational() ExprEqual2()
+}
+
+void ExprEqual2() : {} {
+    ( <EQ> ExprRelational() ExprEqual2() | <NEQ> ExprRelational() ExprEqual2() )?
+}
+
+void ExprRelational() : {} {
+    ExprPlus() ExprRelational2()
+}
+
+void ExprRelational2() : {} {
+    ( <LT> ExprPlus() ExprRelational2() | <LTE> ExprPlus() ExprRelational2() | <GT> ExprPlus() ExprRelational2() | <GTE> ExprPlus() ExprRelational2() )?
+}
+
+void ExprPlus() : {} {
+    ExprMult() ExprPlus2()
+}
+
+void ExprPlus2() : {} {
+    ( <ADD> ExprMult() ExprPlus2() | <SUB> ExprMult() ExprPlus2() )?
+}
+
+void ExprMult() : {} {
+    ExprUnary() ExprMult2()
+}
+
+void ExprMult2() : {} {
+    ( <MUL> ExprUnary() ExprMult2() | <DIV> ExprUnary() ExprMult2() )?
+}
+
+void ExprUnary() : {} {
+    ( <ADD> ExprParenthesis() | <SUB> ExprParenthesis() | ExprParenthesis() )
+}
+
+void ExprParenthesis() : {} {
+    ( <LPAREN> Expr() <RPAREN> | Primary() )
+}
+
+void Primary() : {} {
+    ( <IDENTIFIER> PrimaryID() | <NUMBER> | Literal() )
+}
+
+void PrimaryID() : {} {
+    ( <LBRACKET> Primary() <RBRACKET> | <LPAREN> ExprList() <RPAREN> )?
+}
+
+void Literal() : {} {
+    <LITERAL>
+}

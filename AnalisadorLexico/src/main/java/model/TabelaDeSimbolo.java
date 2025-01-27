@@ -4,17 +4,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TabelaDeSimbolo {
-    private List<Token> tabela;
+    private List<ModelToken> tabela;
 
     public TabelaDeSimbolo() {
         tabela = new ArrayList<>();
     }
 
-    public void adicionarToken(Token token) {
+    public void adicionarToken(ModelToken token) {
         tabela.add(token);
     }
 
-    public List<Token> getTabela() {
+    public List<ModelToken> getTabela() {
         return tabela;
     }
 

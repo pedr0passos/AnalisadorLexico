@@ -1,10 +1,10 @@
 package model;
 
-public class Token {
+public class ModelToken {
     private String tipo;
     private String lexema;
 
-    public Token(String tipo, String lexema) {
+    public ModelToken(String tipo, String lexema) {
         this.tipo = tipo;
         this.lexema = lexema;
     }

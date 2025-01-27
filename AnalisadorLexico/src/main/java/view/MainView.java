@@ -1,12 +1,14 @@
 package view;
 
+import java.util.ArrayList;
 import java.util.List;
 import javacc.ParseException;
 import javax.swing.JButton;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.table.DefaultTableModel;
-import model.Token;
+import model.ModelToken;
+import model.TabelaDeSimbolo;
 import service.AnalisadorService;
 
 public class MainView extends javax.swing.JFrame {
@@ -18,12 +20,15 @@ public class MainView extends javax.swing.JFrame {
             try {
                 String codigo = taCodigo.getText();
 
-                AnalisadorService analisadorService = new AnalisadorService();
-                List<Token> tokens = analisadorService.analisarCodigo(codigo);
+                var analisadorService = new AnalisadorService();
+                var tokens = analisadorService.analisarCodigo(codigo);
+                var tabela = new TabelaDeSimbolo();
+                
+                gerarTabelaDeSimbolos(tabela, tokens);
+                
+                atualizarTabela(tabela);
 
-                atualizarTabela(tokens);
-
-                taMensagem.setText("Análise concluída sem erros.");
+                taMensagem.setText("Análise concluída.");
             } catch (ParseException e) {
                 taMensagem.setText("Erro de análise: " + e.getMessage());
             }
@@ -31,11 +36,23 @@ public class MainView extends javax.swing.JFrame {
 
     }
 
-    private void atualizarTabela(List<Token> tokens) {
+    private void gerarTabelaDeSimbolos(TabelaDeSimbolo tabela, List<ModelToken> tokens) {
+        try {
+            
+            for (var token : tokens) 
+                tabela.adicionarToken(token);
+            
+        } catch (Exception ex) {
+            throw ex;
+        }
+    }
+    
+    private void atualizarTabela(TabelaDeSimbolo tabela) {
         DefaultTableModel modelo = (DefaultTableModel) tbSimbolos.getModel();
+        
         modelo.setRowCount(0); 
 
-        for (Token token : tokens) {
+        for (var token : tabela.getTabela()) {
             modelo.addRow(new Object[]{token.getTipo(), token.getLexema()});
         }
     }
