@@ -9,6 +9,7 @@ import javacc.ParseException;
 import javacc.SimpleParser;
 import javacc.SimpleParserConstants;
 import javacc.Token;
+import model.TabelaDeSimbolo;
 
 public class AnalisadorService {
 
@@ -19,19 +20,17 @@ public class AnalisadorService {
         List<ModelToken> tokens = new ArrayList<>();
 
         try {
-            parser.Start();
-
-            while (true) {
-                Token token = parser.getNextToken();
-                if (token.kind == 0) { 
-                    break;
-                }
-                tokens.add(new ModelToken(SimpleParserConstants.tokenImage[token.kind], token.image));
-            }
+            parser.analisar(inputStream);
+            var tabela = parser.preencherTabelaSimbolos(tokens, inputStream);            
+            
         } catch (ParseException e) {
             throw new ParseException(e.getMessage());
         }
 
         return tokens;
+    }
+    
+    public TabelaDeSimbolo retornarTabelaDeSimbolo(tokens) {
+        
     }
 }

@@ -22,9 +22,7 @@ public class MainView extends javax.swing.JFrame {
 
                 var analisadorService = new AnalisadorService();
                 var tokens = analisadorService.analisarCodigo(codigo);
-                var tabela = new TabelaDeSimbolo();
-                
-                gerarTabelaDeSimbolos(tabela, tokens);
+                var tabela = analisadorService.retornarTabelaDeSimbolo(tokens);
                 
                 atualizarTabela(tabela);
 
@@ -34,17 +32,6 @@ public class MainView extends javax.swing.JFrame {
             }
         });
 
-    }
-
-    private void gerarTabelaDeSimbolos(TabelaDeSimbolo tabela, List<ModelToken> tokens) {
-        try {
-            
-            for (var token : tokens) 
-                tabela.adicionarToken(token);
-            
-        } catch (Exception ex) {
-            throw ex;
-        }
     }
     
     private void atualizarTabela(TabelaDeSimbolo tabela) {
