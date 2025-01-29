@@ -6,10 +6,31 @@ PARSER_BEGIN(SimpleParser)
 
 package javacc;
 
+import java.io.InputStream;
+import java.io.InputStream;
+import java.util.List;
+import model.TabelaDeSimbolo;
+import model.ModelToken;
+
 public class SimpleParser {
-    public static void main(String[] args) throws ParseException {
-        SimpleParser parser = new SimpleParser(System.in);
-        parser.Start();
+    
+    public void analisar(InputStream codigo) throws ParseException {
+        this.Start();
+    }
+
+    public TabelaDeSimbolo preencherTabelaSimbolos(List<ModelToken> tokens, InputStream codigo) throws ParseException{
+        var tabela = new TabelaDeSimbolo();
+        
+        while (true) {
+            Token token = this.getNextToken();
+            if (token.kind == 0) break;
+            tokens.add(new ModelToken(SimpleParserConstants.tokenImage[token.kind], token.image));
+        }
+        
+        for (var token : tokens)
+            tabela.adicionarToken(token);
+        
+        return tabela;
     }
 }
 
@@ -80,7 +101,8 @@ void Start() : {} {
 void Programa() : {} {
     (
         Especificador() Tipo() <IDENTIFIER> Programa2()
-      | <DEFINE> <IDENTIFIER> <NUMBER> <SEMICOLON> Programa()
+      | <DEFINE> <IDENTIFIER> <NUMBER> Programa()
+      | <EOF>
     )
 }
 
