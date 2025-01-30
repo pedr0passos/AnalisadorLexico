@@ -1,42 +1,93 @@
 package view;
 
+import java.awt.Color;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javacc.ParseException;
 import javax.swing.JButton;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.text.DefaultHighlighter;
+import javax.swing.text.Highlighter;
 import model.TabelaDeSimbolo;
 import service.AnalisadorService;
 
 public class MainView extends javax.swing.JFrame {
 
-    public MainView() {
-        initComponents();
+public MainView() {
+    initComponents();
+    btnAnalisar.addActionListener(evt -> {
+        try {
+            String codigo = taCodigo.getText();
+            var analisadorService = new AnalisadorService(codigo);
 
-        btnAnalisar.addActionListener(evt -> {
-            try {
-                String codigo = taCodigo.getText();
+            analisadorService.analisarCodigo();
 
-                var analisadorService = new AnalisadorService(codigo);
-                
-                try {
-                    analisadorService.analisarCodigo();
-                } catch (ParseException e) {
-                    limparTabela();
-                    taMensagem.setText("Erro de análise: " + e.getMessage());
-                }
-                
-                var tabela = analisadorService.getTabela();
-                atualizarTabela(tabela);
-                taMensagem.setText("Análise concluída.");
+            var tabela = analisadorService.getTabela();
+            atualizarTabela(tabela);
+            limparDestaqueErro();
+            taMensagem.setText("Análise concluída.");
+        } catch (ParseException e) {
+            limparTabela();
+            destacarErro(e.getMessage());
+            taMensagem.setText("Erro de análise: " + e.getMessage());
+        } catch (Exception ex) {
+            Logger.getLogger(MainView.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    });
+}
 
-            } catch (Exception ex) {
-                Logger.getLogger(MainView.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        });
+/**
+ * Destaca o caractere onde ocorreu o erro com fundo vermelho.
+ */
+private void destacarErro(String mensagemErro) {
+    try {
+        // Extrai a linha e a coluna do erro
+        int[] posicaoErro = extrairLinhaEColuna(mensagemErro);
+        int linhaErro = posicaoErro[0];
+        int colunaErro = posicaoErro[1];
+
+        if (linhaErro < 1 || colunaErro < 1) return;
+
+        Highlighter highlighter = taCodigo.getHighlighter();
+        Highlighter.HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(Color.RED);
+
+        // Obtém a posição inicial da linha no JTextArea
+        int startOffset = taCodigo.getLineStartOffset(linhaErro - 1);
+        int errorOffset = startOffset + (colunaErro - 1); // Ajusta posição para base 0
+
+        // Destaca apenas o caractere onde ocorreu o erro
+        highlighter.addHighlight(errorOffset, errorOffset + 1, painter);
+    } catch (Exception ex) {
+        ex.printStackTrace();
     }
+}
+
+/**
+ * Remove todos os destaques anteriores.
+ */
+private void limparDestaqueErro() {
+    taCodigo.getHighlighter().removeAllHighlights();
+}
+
+/**
+ * Extrai o número da linha e coluna do erro a partir da mensagem do ParseException.
+ * Assumindo o formato: "Erro de análise: Encountered \"\" at line X, column Y."
+ * Retorna um array [linha, coluna].
+ */
+private int[] extrairLinhaEColuna(String mensagemErro) {
+    Pattern pattern = Pattern.compile("line\\s(\\d+),\\scolumn\\s(\\d+)");
+    Matcher matcher = pattern.matcher(mensagemErro);
+    if (matcher.find()) {
+        return new int[]{Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2))};
+    }
+    return new int[]{-1, -1}; // Retorna valores inválidos se não encontrar
+}
+
+
 
     private void limparTabela() {
         DefaultTableModel modelo = (DefaultTableModel) tbSimbolos.getModel();
