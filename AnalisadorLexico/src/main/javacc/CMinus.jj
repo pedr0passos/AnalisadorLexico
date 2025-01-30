@@ -8,28 +8,22 @@ package javacc;
 
 import java.io.InputStream;
 import java.util.ArrayList;
-import model.TabelaDeSimbolo;
 import model.ModelToken;
 
 public class SimpleParser {
     
-    public void analisar(InputStream codigo) throws ParseException {
+    public void analisar() throws ParseException {
         this.Start();
     }
 
-    public TabelaDeSimbolo preencherTabelaSimbolos(ArrayList<ModelToken> tokens, InputStream codigo) throws ParseException{
-        var tabela = new TabelaDeSimbolo();
-        
+    public ArrayList<ModelToken> getTokens(InputStream codigo) throws ParseException{
+        var tokens = new ArrayList<ModelToken>(); 
         while (true) {
             Token token = this.getNextToken();
             if (token.kind == 0) break;
             tokens.add(new ModelToken(SimpleParserConstants.tokenImage[token.kind], token.image));
         }
-        
-        for (var token : tokens)
-            tabela.adicionarToken(token);
-        
-        return tabela;
+        return tokens;
     }
 }
 

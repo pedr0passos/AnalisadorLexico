@@ -21,24 +21,30 @@ public class MainView extends javax.swing.JFrame {
 
                 var analisadorService = new AnalisadorService(codigo);
                 
-                analisadorService.analisarCodigo();
-                var tabela = analisadorService.getTabela();
+                try {
+                    analisadorService.analisarCodigo();
+                } catch (ParseException e) {
+                    limparTabela();
+                    taMensagem.setText("Erro de análise: " + e.getMessage());
+                }
                 
+                var tabela = analisadorService.getTabela();
                 atualizarTabela(tabela);
-
                 taMensagem.setText("Análise concluída.");
-            } catch (ParseException e) {
-                taMensagem.setText("Erro de análise: " + e.getMessage());
+
             } catch (Exception ex) {
                 Logger.getLogger(MainView.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
-
     }
-    
+
+    private void limparTabela() {
+        DefaultTableModel modelo = (DefaultTableModel) tbSimbolos.getModel();
+        modelo.setRowCount(0); 
+    }
+
     private void atualizarTabela(TabelaDeSimbolo tabela) {
         DefaultTableModel modelo = (DefaultTableModel) tbSimbolos.getModel();
-        
         modelo.setRowCount(0); 
 
         for (var token : tabela.getTabela()) {
