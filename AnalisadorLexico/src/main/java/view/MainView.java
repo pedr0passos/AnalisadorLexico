@@ -1,13 +1,12 @@
 package view;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javacc.ParseException;
 import javax.swing.JButton;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.table.DefaultTableModel;
-import model.ModelToken;
 import model.TabelaDeSimbolo;
 import service.AnalisadorService;
 
@@ -20,15 +19,18 @@ public class MainView extends javax.swing.JFrame {
             try {
                 String codigo = taCodigo.getText();
 
-                var analisadorService = new AnalisadorService();
-                var tokens = analisadorService.analisarCodigo(codigo);
-                var tabela = analisadorService.retornarTabelaDeSimbolo(tokens);
+                var analisadorService = new AnalisadorService(codigo);
+                
+                analisadorService.analisarCodigo();
+                var tabela = analisadorService.getTabela();
                 
                 atualizarTabela(tabela);
 
                 taMensagem.setText("Análise concluída.");
             } catch (ParseException e) {
                 taMensagem.setText("Erro de análise: " + e.getMessage());
+            } catch (Exception ex) {
+                Logger.getLogger(MainView.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
 

@@ -7,8 +7,7 @@ PARSER_BEGIN(SimpleParser)
 package javacc;
 
 import java.io.InputStream;
-import java.io.InputStream;
-import java.util.List;
+import java.util.ArrayList;
 import model.TabelaDeSimbolo;
 import model.ModelToken;
 
@@ -18,7 +17,7 @@ public class SimpleParser {
         this.Start();
     }
 
-    public TabelaDeSimbolo preencherTabelaSimbolos(List<ModelToken> tokens, InputStream codigo) throws ParseException{
+    public TabelaDeSimbolo preencherTabelaSimbolos(ArrayList<ModelToken> tokens, InputStream codigo) throws ParseException{
         var tabela = new TabelaDeSimbolo();
         
         while (true) {
