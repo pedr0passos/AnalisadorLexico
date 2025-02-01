@@ -10,6 +10,7 @@ import javax.swing.JButton;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.text.BadLocationException;
 import javax.swing.text.DefaultHighlighter;
 import javax.swing.text.Highlighter;
 import model.TabelaDeSimbolo;
@@ -17,77 +18,59 @@ import service.AnalisadorService;
 
 public class MainView extends javax.swing.JFrame {
 
-public MainView() {
-    initComponents();
-    btnAnalisar.addActionListener(evt -> {
+    public MainView() {
+        initComponents();
+        btnAnalisar.addActionListener(evt -> {
+            try {
+                String codigo = taCodigo.getText();
+                var analisadorService = new AnalisadorService(codigo);
+
+                analisadorService.analisarCodigo();
+
+                var tabela = analisadorService.getTabela();
+                atualizarTabela(tabela);
+                limparDestaqueErro();
+                taMensagem.setText("Análise concluída.");
+            } catch (ParseException e) {
+                limparTabela();
+                destacarErro(e.getMessage());
+                taMensagem.setText("Erro de análise: " + e.getMessage());
+            } catch (Exception ex) {
+                Logger.getLogger(MainView.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        });
+    }
+
+    private void destacarErro(String mensagemErro) {
         try {
-            String codigo = taCodigo.getText();
-            var analisadorService = new AnalisadorService(codigo);
+            int[] posicaoErro = extrairLinhaEColuna(mensagemErro);
+            int linhaErro = posicaoErro[0];
+            int colunaErro = posicaoErro[1];
 
-            analisadorService.analisarCodigo();
+            if (linhaErro < 1 || colunaErro < 1) return;
 
-            var tabela = analisadorService.getTabela();
-            atualizarTabela(tabela);
-            limparDestaqueErro();
-            taMensagem.setText("Análise concluída.");
-        } catch (ParseException e) {
-            limparTabela();
-            destacarErro(e.getMessage());
-            taMensagem.setText("Erro de análise: " + e.getMessage());
-        } catch (Exception ex) {
-            Logger.getLogger(MainView.class.getName()).log(Level.SEVERE, null, ex);
+            Highlighter highlighter = taCodigo.getHighlighter();
+            Highlighter.HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(Color.RED);
+
+            int startOffset = taCodigo.getLineStartOffset(linhaErro - 1);
+            int errorOffset = startOffset + (colunaErro - 1);
+
+            highlighter.addHighlight(errorOffset, errorOffset + 1, painter);
+        } catch (BadLocationException ex) {}
+    }
+    
+    private void limparDestaqueErro() {
+        taCodigo.getHighlighter().removeAllHighlights();
+    }
+
+    private int[] extrairLinhaEColuna(String mensagemErro) {
+        Pattern pattern = Pattern.compile("line\\s(\\d+),\\scolumn\\s(\\d+)");
+        Matcher matcher = pattern.matcher(mensagemErro);
+        if (matcher.find()) {
+            return new int[]{Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2))};
         }
-    });
-}
-
-/**
- * Destaca o caractere onde ocorreu o erro com fundo vermelho.
- */
-private void destacarErro(String mensagemErro) {
-    try {
-        // Extrai a linha e a coluna do erro
-        int[] posicaoErro = extrairLinhaEColuna(mensagemErro);
-        int linhaErro = posicaoErro[0];
-        int colunaErro = posicaoErro[1];
-
-        if (linhaErro < 1 || colunaErro < 1) return;
-
-        Highlighter highlighter = taCodigo.getHighlighter();
-        Highlighter.HighlightPainter painter = new DefaultHighlighter.DefaultHighlightPainter(Color.RED);
-
-        // Obtém a posição inicial da linha no JTextArea
-        int startOffset = taCodigo.getLineStartOffset(linhaErro - 1);
-        int errorOffset = startOffset + (colunaErro - 1); // Ajusta posição para base 0
-
-        // Destaca apenas o caractere onde ocorreu o erro
-        highlighter.addHighlight(errorOffset, errorOffset + 1, painter);
-    } catch (Exception ex) {
-        ex.printStackTrace();
+        return new int[]{-1, -1}; 
     }
-}
-
-/**
- * Remove todos os destaques anteriores.
- */
-private void limparDestaqueErro() {
-    taCodigo.getHighlighter().removeAllHighlights();
-}
-
-/**
- * Extrai o número da linha e coluna do erro a partir da mensagem do ParseException.
- * Assumindo o formato: "Erro de análise: Encountered \"\" at line X, column Y."
- * Retorna um array [linha, coluna].
- */
-private int[] extrairLinhaEColuna(String mensagemErro) {
-    Pattern pattern = Pattern.compile("line\\s(\\d+),\\scolumn\\s(\\d+)");
-    Matcher matcher = pattern.matcher(mensagemErro);
-    if (matcher.find()) {
-        return new int[]{Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2))};
-    }
-    return new int[]{-1, -1}; // Retorna valores inválidos se não encontrar
-}
-
-
 
     private void limparTabela() {
         DefaultTableModel modelo = (DefaultTableModel) tbSimbolos.getModel();
