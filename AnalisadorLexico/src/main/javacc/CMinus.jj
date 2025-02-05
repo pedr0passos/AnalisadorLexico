@@ -100,14 +100,18 @@ void Programa() : {} {
 }
 
 void Declaracao() : {} {
-    Especificador() Tipo() <IDENTIFIER> Declaracao2() <SEMICOLON>
+    Especificador() Tipo() <IDENTIFIER> (
+        <LPAREN> ListaParametros() <RPAREN> Bloco()  // Definição de função, sem ponto e vírgula
+      | Declaracao2() <SEMICOLON>                   // Declaração de variável ou atribuição, com ponto e vírgula
+    )
 }
+
 
 void Declaracao2() : {} {
     (
         <LBRACKET> <NUMBER> <RBRACKET> // Array
       | <LPAREN> ListaParametros() <RPAREN> Bloco() // Função
-      | <ASSIGN> Expr() // Atribuição
+      | OperadorAtrib() Expr() // Atribuições simples e compostas
       | {} // Produção vazia para declaração simples
     )
 }
@@ -164,7 +168,20 @@ void Expressao() : {} {
 
 void Atribuicao() : {} {
     Expr() ( OperadorAtrib() Expr() )?
+    {
+        if ((token.kind == SimpleParserConstants.PLUS_ASSIGN ||
+             token.kind == SimpleParserConstants.MINUS_ASSIGN ||
+             token.kind == SimpleParserConstants.MUL_ASSIGN ||
+             token.kind == SimpleParserConstants.DIV_ASSIGN ||
+             token.kind == SimpleParserConstants.MOD_ASSIGN ||
+             token.kind == SimpleParserConstants.ASSIGN) &&
+            getToken(1).kind == SimpleParserConstants.SEMICOLON) {
+            throw new ParseException("Erro: expressão esperada após o operador de atribuição.");
+        }
+    }
 }
+
+
 
 void OperadorAtrib() : {} {
     ( <ASSIGN> | <MUL_ASSIGN> | <DIV_ASSIGN> | <MOD_ASSIGN> | <PLUS_ASSIGN> | <MINUS_ASSIGN> )
