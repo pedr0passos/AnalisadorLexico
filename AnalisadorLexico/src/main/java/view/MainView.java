@@ -6,6 +6,7 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javacc.ParseException;
+import javacc.TokenMgrError;
 import javax.swing.JButton;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
@@ -35,8 +36,10 @@ public class MainView extends javax.swing.JFrame {
                 limparTabela();
                 destacarErro(e.getMessage());
                 taMensagem.setText("Erro de análise: " + e.getMessage());
-            } catch (Exception ex) {
-                Logger.getLogger(MainView.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (TokenMgrError e) {
+                limparTabela();
+                destacarErro(e.getMessage());
+                taMensagem.setText("Erro Léxico: " + e.getMessage());
             }
         });
     }
