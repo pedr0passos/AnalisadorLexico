@@ -397,5 +397,21 @@ void ExprLista() : {} {
    produção que no nível de programa.
 */
 void Declaracao() : {} {
-    Especificador() Tipo() <IDENTIFIER> Programa2()
+    Especificador() Tipo() <IDENTIFIER> Declaracao2() <SEMICOLON>
 }
+
+void Declaracao2() : {} {
+    (
+        
+        LOOKAHEAD( <LBRACKET> | <LPAREN> )
+        (
+            <LBRACKET> <NUMBER> <RBRACKET>              // Array
+          | <LPAREN> ListaParametros() <RPAREN> Bloco()   // Função
+        )
+      |
+        // Caso contrário, é uma declaração de variável simples,
+        // com inicialização opcional:
+        ( <ASSIGN> Expr() )?
+    )
+}
+
