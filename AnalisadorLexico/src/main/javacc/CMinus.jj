@@ -1,5 +1,6 @@
 options {
     LOOKAHEAD = 2;
+    UNICODE_INPUT = false; // Garante que apenas caracteres ASCII sejam aceitos
 }
 
 PARSER_BEGIN(SimpleParser)
@@ -7,7 +8,12 @@ PARSER_BEGIN(SimpleParser)
 package javacc;
 
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import model.ModelToken;
 
 public class SimpleParser {
@@ -16,26 +22,70 @@ public class SimpleParser {
         this.Start();
     }
 
-    public ArrayList<ModelToken> getTokens(InputStream codigo) throws ParseException{
-        var tokens = new ArrayList<ModelToken>(); 
+    private static final Map<Integer, String> tokenNameMap = createTokenNameMap();
+
+    private static Map<Integer, String> createTokenNameMap() {
+        Map<Integer, String> map = new HashMap<>();
+        Field[] fields = SimpleParserConstants.class.getDeclaredFields();
+        for (Field field : fields) {
+            if (field.getType() == int.class) {
+                int value = 0;
+                try {
+                    value = field.getInt(null); 
+                } catch (IllegalArgumentException | IllegalAccessException ex) {
+                    Logger.getLogger(SimpleParser.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                map.put(value, field.getName());
+            }
+        }
+        return map;
+    }
+
+    public ArrayList<ModelToken> getTokens(InputStream codigo) throws ParseException {
+        var tokens = new ArrayList<ModelToken>();
+        this.ReInit(codigo); 
         while (true) {
             Token token = this.getNextToken();
-            if (token.kind == 0) break;
-            tokens.add(new ModelToken(SimpleParserConstants.tokenImage[token.kind], token.image));
+
+            if (token.kind == SimpleParserConstants.EOF) break;
+
+            String tokenNome = tokenNameMap.get(token.kind);
+            if (tokenNome == null) {
+                tokenNome = SimpleParserConstants.tokenImage[token.kind];
+            } else {
+                tokenNome = "<" + tokenNome + ">";
+            }
+            tokens.add(new ModelToken(tokenNome, token.image));
         }
         return tokens;
     }
+
+
 }
 
 PARSER_END(SimpleParser)
 
-SKIP : { " " | "\t" | "\n" | "\r" }
+SKIP : {
+    " " | "\t" | "\n" | "\r"
+}
 
+SKIP : {
+    <SINGLE_LINE_COMMENT: "//" (~["\n", "\r"])* ( "\n" | "\r" | "\r\n" )>
+}
+
+SKIP : {
+    <MULTI_LINE_COMMENT: "/*" ( ~["*"] )* ( "*" ( ~["/"] )* )* "/">
+}
+
+// -----------------
+// Tokens válidos
+// -----------------
 TOKEN : {
     < DEFINE: "#define" >
-  | < #DIGIT: ["0"-"9"] >
-  | < #LETTER: ["a"-"z", "A"-"Z", "_"] >
   | < NUMBER: (<DIGIT>)+ ("." (<DIGIT>)+)? >
+  // Definições auxiliares de caracteres
+  | < #LETTER: ["a"-"z", "A"-"Z", "_"] >
+  | < #DIGIT: ["0"-"9"] >
   | < ADD: "+" >
   | < SUB: "-" >
   | < MUL: "*" >
@@ -84,8 +134,32 @@ TOKEN : {
   | < RBRACE: "}" >
   | < DOT: "." >
   | < LITERAL: "\"" (~["\""])* "\"" >
-  | < IDENTIFIER: (<LETTER>)(<LETTER> | <DIGIT>)* >
+  // Definição de IDENTIFIER sem acentos (somente ASCII permitido)
+  | < IDENTIFIER: <LETTER> (<LETTER> | <DIGIT>)* >
+    {
+        if (matchedToken.image.length() > 31) {
+            throw new TokenMgrError("Erro: Nome de variável com mais de 31 caracteres: " + matchedToken.image, TokenMgrError.LEXICAL_ERROR);
+        }
+    }
 }
+
+// -----------------
+// Tokens auxiliares para fallback
+// -----------------
+TOKEN : {
+    < #ANY_CHAR: ["\u0000"-"\uFFFF"] >
+}
+
+TOKEN : {
+    < INVALID: <ANY_CHAR> >
+    {
+        throw new TokenMgrError("Erro léxico: caractere inválido \"" + matchedToken.image + "\" encontrado.", TokenMgrError.LEXICAL_ERROR);
+    }
+}
+
+// -----------------
+// Produções
+// -----------------
 
 void Start() : {} {
     Programa() <EOF>
@@ -100,14 +174,17 @@ void Programa() : {} {
 }
 
 void Declaracao() : {} {
-    Especificador() Tipo() <IDENTIFIER> Declaracao2() <SEMICOLON>
+    Especificador() Tipo() <IDENTIFIER> (
+        <LPAREN> ListaParametros() <RPAREN> Bloco()  // Definição de função, sem ponto e vírgula
+      | Declaracao2() <SEMICOLON>                   // Declaração de variável ou atribuição, com ponto e vírgula
+    )
 }
 
 void Declaracao2() : {} {
     (
         <LBRACKET> <NUMBER> <RBRACKET> // Array
       | <LPAREN> ListaParametros() <RPAREN> Bloco() // Função
-      | <ASSIGN> Expr() // Atribuição
+      | OperadorAtrib() Expr() // Atribuições simples e compostas
       | {} // Produção vazia para declaração simples
     )
 }
@@ -164,6 +241,17 @@ void Expressao() : {} {
 
 void Atribuicao() : {} {
     Expr() ( OperadorAtrib() Expr() )?
+    {
+        if ((token.kind == SimpleParserConstants.PLUS_ASSIGN ||
+             token.kind == SimpleParserConstants.MINUS_ASSIGN ||
+             token.kind == SimpleParserConstants.MUL_ASSIGN ||
+             token.kind == SimpleParserConstants.DIV_ASSIGN ||
+             token.kind == SimpleParserConstants.MOD_ASSIGN ||
+             token.kind == SimpleParserConstants.ASSIGN) &&
+            getToken(1).kind == SimpleParserConstants.SEMICOLON) {
+            throw new ParseException("Erro: expressão esperada após o operador de atribuição.");
+        }
+    }
 }
 
 void OperadorAtrib() : {} {
@@ -212,5 +300,7 @@ void ExprPrimaria() : {} {
 }
 
 void ExprLista() : {} {
-    ( Expr() ( <COMMA> Expr() )* )?
+    ( Expr() ( <COMMA> Expr() )* )? // Torna opcional a presença de argumentos
 }
+
+
