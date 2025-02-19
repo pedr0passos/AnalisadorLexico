@@ -59,8 +59,6 @@ public class SimpleParser {
         }
         return tokens;
     }
-
-
 }
 
 PARSER_END(SimpleParser)
@@ -77,13 +75,9 @@ SKIP : {
     <MULTI_LINE_COMMENT: "/*" ( ~["*"] )* ( "*" ( ~["/"] )* )* "/">
 }
 
-// -----------------
-// Tokens válidos
-// -----------------
 TOKEN : {
     < DEFINE: "#define" >
   | < NUMBER: (<DIGIT>)+ ("." (<DIGIT>)+)? >
-  // Definições auxiliares de caracteres
   | < #LETTER: ["a"-"z", "A"-"Z", "_"] >
   | < #DIGIT: ["0"-"9"] >
   | < ADD: "+" >
@@ -110,6 +104,8 @@ TOKEN : {
   | < RETURN: "return" >
   | < PRINTF: "printf" >
   | < SCANF: "scanf" >
+  | < WHILE: "while" >
+  | < FOR: "for" >
   | < BREAK: "break" >
   | < IF: "if" >
   | < ELSE: "else" >
@@ -133,8 +129,8 @@ TOKEN : {
   | < LBRACE: "{" >
   | < RBRACE: "}" >
   | < DOT: "." >
+  | < AMPERSAND: "&" >
   | < LITERAL: "\"" (~["\""])* "\"" >
-  // Definição de IDENTIFIER sem acentos (somente ASCII permitido)
   | < IDENTIFIER: <LETTER> (<LETTER> | <DIGIT>)* >
     {
         if (matchedToken.image.length() > 31) {
@@ -143,9 +139,6 @@ TOKEN : {
     }
 }
 
-// -----------------
-// Tokens auxiliares para fallback
-// -----------------
 TOKEN : {
     < #ANY_CHAR: ["\u0000"-"\uFFFF"] >
 }
@@ -156,10 +149,6 @@ TOKEN : {
         throw new TokenMgrError("Erro léxico: caractere inválido \"" + matchedToken.image + "\" encontrado.", TokenMgrError.LEXICAL_ERROR);
     }
 }
-
-// -----------------
-// Produções
-// -----------------
 
 void Start() : {} {
     Programa() <EOF>
@@ -230,6 +219,8 @@ void Instrucoes() : {} {
       | <SCANF> <LPAREN> <IDENTIFIER> <RPAREN> <SEMICOLON>
       | <BREAK> <SEMICOLON>
       | <IF> <LPAREN> Expr() <RPAREN> Instrucoes() ( <ELSE> Instrucoes() )?
+      | <WHILE> <LPAREN> Expr() <RPAREN> Instrucoes()
+      | <FOR> <LPAREN> Expr() <SEMICOLON> Expr() <SEMICOLON> Expr() <RPAREN> Instrucoes()
       | Bloco()
       | Declaracao()
     )
@@ -302,5 +293,3 @@ void ExprPrimaria() : {} {
 void ExprLista() : {} {
     ( Expr() ( <COMMA> Expr() )* )? // Torna opcional a presença de argumentos
 }
-
-
