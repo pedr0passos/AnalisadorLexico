@@ -183,16 +183,17 @@ void Especificador() : {} {
 }
 
 void atribArray() : {} {
-    (   OperadorAtrib() <LBRACE> <NUMBER> <RBRACE>
+    (   //OperadorAtrib() <LBRACE> <NUMBER> <RBRACE>
+        OperadorAtrib() <LBRACE> listaNum() <RBRACE>
         | {}
     )
 }
 
-/*void listaNum() : {} {
+void listaNum() : {} {
     (
-
-    )
-}*/
+        <NUMBER> ( <COMMA> <NUMBER> )*
+    )?
+}
 
 void Tipo() : {} {
     (
