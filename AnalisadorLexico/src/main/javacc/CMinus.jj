@@ -171,7 +171,7 @@ void Declaracao() : {} {
 
 void Declaracao2() : {} {
     (
-        <LBRACKET> <NUMBER> <RBRACKET> // Array
+        <LBRACKET> <NUMBER> <RBRACKET> atribArray() // Array
       | <LPAREN> ListaParametros() <RPAREN> Bloco() // Função
       | OperadorAtrib() Expr() // Atribuições simples e compostas
       | {} // Produção vazia para declaração simples
@@ -181,6 +181,18 @@ void Declaracao2() : {} {
 void Especificador() : {} {
     ( <AUTO> | <STATIC> | <EXTERN> | <CONST> )?
 }
+
+void atribArray() : {} {
+    (   OperadorAtrib() <LBRACE> <NUMBER> <RBRACE>
+        | {}
+    )
+}
+
+/*void listaNum() : {} {
+    (
+
+    )
+}*/
 
 void Tipo() : {} {
     (
