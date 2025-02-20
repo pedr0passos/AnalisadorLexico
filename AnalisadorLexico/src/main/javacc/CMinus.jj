@@ -46,7 +46,9 @@ public class SimpleParser {
         this.ReInit(codigo); 
         while (true) {
             Token token = this.getNextToken();
+
             if (token.kind == SimpleParserConstants.EOF) break;
+
             String tokenNome = tokenNameMap.get(token.kind);
             if (tokenNome == null) {
                 tokenNome = SimpleParserConstants.tokenImage[token.kind];
@@ -61,10 +63,9 @@ public class SimpleParser {
 
 PARSER_END(SimpleParser)
 
-///////////////////////////////////////////////////////////////////////////////
-// SKIP (espaços e comentários)
-///////////////////////////////////////////////////////////////////////////////
-SKIP : { " " | "\t" | "\n" | "\r" }
+SKIP : {
+    " " | "\t" | "\n" | "\r"
+}
 
 SKIP : {
     <SINGLE_LINE_COMMENT: "//" (~["\n", "\r"])* ( "\n" | "\r" | "\r\n" )>
@@ -74,13 +75,9 @@ SKIP : {
     <MULTI_LINE_COMMENT: "/*" ( ~["*"] )* ( "*" ( ~["/"] )* )* "/">
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Tokens válidos
-///////////////////////////////////////////////////////////////////////////////
 TOKEN : {
     < DEFINE: "#define" >
   | < NUMBER: (<DIGIT>)+ ("." (<DIGIT>)+)? >
-  // Definições auxiliares de caracteres
   | < #LETTER: ["a"-"z", "A"-"Z", "_"] >
   | < #DIGIT: ["0"-"9"] >
   | < ADD: "+" >
@@ -107,6 +104,8 @@ TOKEN : {
   | < RETURN: "return" >
   | < PRINTF: "printf" >
   | < SCANF: "scanf" >
+  | < WHILE: "while" >
+  | < FOR: "for" >
   | < BREAK: "break" >
   | < IF: "if" >
   | < ELSE: "else" >
@@ -130,8 +129,8 @@ TOKEN : {
   | < LBRACE: "{" >
   | < RBRACE: "}" >
   | < DOT: "." >
+  | < AMPERSAND: "&" >
   | < LITERAL: "\"" (~["\""])* "\"" >
-  // IDENTIFIER: somente caracteres ASCII e com tamanho máximo de 31
   | < IDENTIFIER: <LETTER> (<LETTER> | <DIGIT>)* >
     {
         if (matchedToken.image.length() > 31) {
@@ -140,9 +139,6 @@ TOKEN : {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Tokens auxiliares para fallback
-///////////////////////////////////////////////////////////////////////////////
 TOKEN : {
     < #ANY_CHAR: ["\u0000"-"\uFFFF"] >
 }
@@ -154,60 +150,38 @@ TOKEN : {
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Produções (a gramática foi adaptada para corresponder à especificação)
-///////////////////////////////////////////////////////////////////////////////
-
-/* Início:
-   <programa> → <especificador> <tipo> ID <programa2>
-              | #define ID NUM <programa>   // observe que o <CRLF> é implicitamente tratado
-              | ε
-*/
 void Start() : {} {
     Programa() <EOF>
 }
 
 void Programa() : {} {
     (
-      Especificador() Tipo() <IDENTIFIER> Programa2()
-    | <DEFINE> <IDENTIFIER> <NUMBER> Programa()
-    | {} 
+        Declaracao() Programa()
+      | <DEFINE> <IDENTIFIER> <NUMBER> Programa()
+      | {} // Produção vazia para permitir fim do programa
     )
 }
 
-/* <programa2> → ; <programa>
-                 | [ NUM ] ; <programa>
-                 | ( <listaParametros> ) <bloco> <programa>
-                 | , <listaID> <programa>
-*/
-void Programa2() : {} {
+void Declaracao() : {} {
+    Especificador() Tipo() <IDENTIFIER> (
+        <LPAREN> ListaParametros() <RPAREN> Bloco()  // Definição de função, sem ponto e vírgula
+      | Declaracao2() <SEMICOLON>                   // Declaração de variável ou atribuição, com ponto e vírgula
+    )
+}
+
+void Declaracao2() : {} {
     (
-        <SEMICOLON> Programa()
-      | <LBRACKET> <NUMBER> <RBRACKET> <SEMICOLON> Programa()
-      | <LPAREN> ListaParametros() <RPAREN> Bloco() Programa()
-      | <COMMA> ListaID() Programa()
+        <LBRACKET> <NUMBER> <RBRACKET> // Array
+      | <LPAREN> ListaParametros() <RPAREN> Bloco() // Função
+      | OperadorAtrib() Expr() // Atribuições simples e compostas
+      | {} // Produção vazia para declaração simples
     )
 }
 
-/* <listaID> → ID <declaracaoParam2> <listaIDTail> */
-void ListaID() : {} {
-    <IDENTIFIER> DeclaracaoParam2() ListaIDTail()
-}
-
-/* <listaIDTail> → ; | , <listaID> */
-void ListaIDTail() : {} {
-    (
-      <SEMICOLON>
-    | <COMMA> ListaID()
-    )
-}
-
-/* <especificador> → AUTO | STATIC | EXTERN | CONST | ε */
 void Especificador() : {} {
     ( <AUTO> | <STATIC> | <EXTERN> | <CONST> )?
 }
 
-/* <tipo> → VOID | CHAR | FLOAT | DOUBLE | SIGNED <inteiro> | UNSIGNED <inteiro> | <inteiro> */
 void Tipo() : {} {
     (
         <VOID> | <CHAR> | <FLOAT> | <DOUBLE>
@@ -217,96 +191,45 @@ void Tipo() : {} {
     )
 }
 
-/* <inteiro> → SHORT | INT | LONG */
 void Inteiro() : {} {
     ( <SHORT> | <INT> | <LONG> )
 }
 
-/* <listaParametros> → <listaParamRestante> | ε
-   (aqui usamos: listaParamRestante = declaracaoParam (, declaracaoParam)* )
-*/
 void ListaParametros() : {} {
     ( DeclaracaoParam() ( <COMMA> DeclaracaoParam() )* )?
 }
 
-/* <declaracaoParam> → <tipo> ID <declaracaoParam2> */
 void DeclaracaoParam() : {} {
     Tipo() <IDENTIFIER> DeclaracaoParam2()
 }
 
-/* <declaracaoParam2> → [ NUM ] | ε */
 void DeclaracaoParam2() : {} {
     ( <LBRACKET> <NUMBER> <RBRACKET> )?
 }
 
-/* <bloco> → { <conjuntoInst> } | ; <conjuntoInst> */
 void Bloco() : {} {
-    (
-       <LBRACE> ConjuntoInst() <RBRACE>
-     | <SEMICOLON> ConjuntoInst()
-    )
+    <LBRACE> ( Instrucoes() )* <RBRACE>
 }
 
-/* <conjuntoInst> → <programa> <conjuntoInst>
-                    | <instrucoes> <conjuntoInst>
-                    | ε
-*/
-
-void ConjuntoInstElement() : {} {
-    Declaracao() | Instrucoes()
-}
-
-void ConjuntoInst() : {} {
-    ( ConjuntoInstElement() )*
-}
-
-/* <instrucoes> → ID <expressao> ;
-                   | RETURN <expr> ;
-                   | PRINTF ( <expr> ) ;
-                   | SCANF ( ID ) ;
-                   | BREAK ;
-                   | IF ( <expr> ) <instrucoes> <instrucoesIf>
-*/
 void Instrucoes() : {} {
     (
-        Expr() <SEMICOLON>
+        <IDENTIFIER> Expressao() <SEMICOLON>
       | <RETURN> Expr() <SEMICOLON>
       | <PRINTF> <LPAREN> Expr() <RPAREN> <SEMICOLON>
       | <SCANF> <LPAREN> <IDENTIFIER> <RPAREN> <SEMICOLON>
       | <BREAK> <SEMICOLON>
-      | <IF> <LPAREN> Expr() <RPAREN> Instrucoes() InstrucoesIf()
+      | <IF> <LPAREN> Expr() <RPAREN> Instrucoes() ( <ELSE> Instrucoes() )?
+      | <WHILE> <LPAREN> Expr() <RPAREN> Instrucoes()
+      | <FOR> <LPAREN> Expr() <SEMICOLON> Expr() <SEMICOLON> Expr() <RPAREN> Instrucoes()
       | Bloco()
       | Declaracao()
     )
 }
 
-
-/* <instrucoesIf> → ELSE <instrucoes> | ε */
-void InstrucoesIf() : {} {
-    (
-       <ELSE> Instrucoes()
-     | {}
-    )
-}
-
-/* <expressao> → <atribuicao>
-                  | [ <expr> ] <atribuicao>
-                  | ( <exprList> )
-                  | ε
-*/
 void Expressao() : {} {
-    (
-       Atribuicao()
-     | <LBRACKET> Expr() <RBRACKET> Atribuicao()
-     | <LPAREN> ExprLista() <RPAREN>
-     | {}
-    )
+    Atribuicao()
 }
 
-/* <atribuicao> → <operadorAtrib> <expr>
-   (Observação: a implementação abaixo segue o estilo “C” – ou seja, uma expressão
-    seguida, opcionalmente, de um operador de atribuição e outra expressão.)
-*/
 void Atribuicao() : {} {
     Expr() ( OperadorAtrib() Expr() )?
     {
@@ -326,57 +249,38 @@ void OperadorAtrib() : {} {
     ( <ASSIGN> | <MUL_ASSIGN> | <DIV_ASSIGN> | <MOD_ASSIGN> | <PLUS_ASSIGN> | <MINUS_ASSIGN> )
 }
 
-/* <expr> → <exprAnd> <exprOr> */
 void Expr() : {} {
     ExprOr()
 }
 
-/* <exprOr> → OR <exprAnd> <exprOr> | ε 
-   (implementado com iteração: ExprAnd() ( <OR> ExprAnd() )* )
-*/
 void ExprOr() : {} {
     ExprAnd() ( <OR> ExprAnd() )*
 }
 
-/* <exprAnd> → <exprEqual> <exprAnd2>
-   (aqui, <exprAnd2> é implementado como a repetição opcional: ( <AND> ExprEqual() )* )
-*/
 void ExprAnd() : {} {
     ExprEqual() ( <AND> ExprEqual() )*
 }
 
-/* <exprEqual> → <exprRelational> <exprEqual2>
-   (com repetição opcional para os operadores de igualdade)
-*/
 void ExprEqual() : {} {
     ExprRelacional() ( ( <EQ> | <NEQ> ) ExprRelacional() )*
 }
 
-/* <exprRelational> → <exprPlus> <exprRelational2>
-   (com repetição opcional para os operadores relacionais)
-*/
 void ExprRelacional() : {} {
     ExprAditiva() ( ( <LT> | <LTE> | <GT> | <GTE> ) ExprAditiva() )*
 }
 
-/* <exprPlus> → <exprMult> <exprPlus2> */
 void ExprAditiva() : {} {
     ExprMultiplicativa() ( ( <ADD> | <SUB> ) ExprMultiplicativa() )*
 }
 
-/* <exprMult> → <exprUnary> <exprMult2> */
 void ExprMultiplicativa() : {} {
     ExprUnaria() ( ( <MUL> | <DIV> | <MOD> ) ExprUnaria() )*
 }
 
-/* <exprUnary> → + <exprParenthesis> | - <exprParenthesis> | <exprParenthesis> */
 void ExprUnaria() : {} {
     ( <ADD> | <SUB> )? ExprPrimaria()
 }
 
-/* <exprParenthesis> → ( <expr> ) | <primary>
-   (aqui, <primary> está incorporado na produção abaixo)
-*/
 void ExprPrimaria() : {} {
     (
         <IDENTIFIER> ( <LBRACKET> Expr() <RBRACKET> | <LPAREN> ExprLista() <RPAREN> )?
@@ -386,32 +290,6 @@ void ExprPrimaria() : {} {
     )
 }
 
-/* <exprList> → <expr> <exprListTail> | ε
-   (<exprListTail> é implementado pela repetição opcional de “, Expr()”)
-*/
 void ExprLista() : {} {
-    ( Expr() ( <COMMA> Expr() )* )?
+    ( Expr() ( <COMMA> Expr() )* )? // Torna opcional a presença de argumentos
 }
-
-/* Para declarações internas (por exemplo, dentro de um bloco) usamos a mesma
-   produção que no nível de programa.
-*/
-void Declaracao() : {} {
-    Especificador() Tipo() <IDENTIFIER> Declaracao2() <SEMICOLON>
-}
-
-void Declaracao2() : {} {
-    (
-        
-        LOOKAHEAD( <LBRACKET> | <LPAREN> )
-        (
-            <LBRACKET> <NUMBER> <RBRACKET>              // Array
-          | <LPAREN> ListaParametros() <RPAREN> Bloco()   // Função
-        )
-      |
-        // Caso contrário, é uma declaração de variável simples,
-        // com inicialização opcional:
-        ( <ASSIGN> Expr() )?
-    )
-}
-
