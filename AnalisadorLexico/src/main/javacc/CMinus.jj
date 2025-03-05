@@ -18,8 +18,11 @@ import java.util.logging.Logger;
 import model.ModelToken;
 
 public class SimpleParser {
-    
+
     private Stack<Map<String, String>> symbolTable = new Stack<>();
+    // Variáveis globais para armazenar o tipo e nome da variável atualmente declarada
+    public String currentDeclaredType = null;
+    public String currentDeclaredVar = null;
 
     public void analisar() throws ParseException {
         this.Start();
@@ -34,7 +37,7 @@ public class SimpleParser {
             if (field.getType() == int.class) {
                 int value = 0;
                 try {
-                    value = field.getInt(null); 
+                    value = field.getInt(null);
                 } catch (IllegalArgumentException | IllegalAccessException ex) {
                     Logger.getLogger(SimpleParser.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -43,7 +46,7 @@ public class SimpleParser {
         }
         return map;
     }
-    
+
     public String lookup(String name) {
         for (int i = symbolTable.size() - 1; i >= 0; i--) {
             if (symbolTable.get(i).containsKey(name)) {
@@ -52,14 +55,14 @@ public class SimpleParser {
         }
         return null;
     }
-    
+
     public String lookupInCurrentScope(String name) {
         if (!symbolTable.isEmpty() && symbolTable.peek().containsKey(name)) {
             return symbolTable.peek().get(name);
         }
         return null;
     }
-    
+
     public String lookupInGlobal(String name) {
         if (!symbolTable.isEmpty() && symbolTable.firstElement().containsKey(name)) {
             return symbolTable.firstElement().get(name);
@@ -67,9 +70,27 @@ public class SimpleParser {
         return null;
     }
 
+    // Método auxiliar para determinar o tipo de uma expressão simples
+    public String computeExprType(Token token) throws ParseException {
+        if (token.kind == SimpleParserConstants.NUMBER) {
+            if (token.image.indexOf('.') >= 0) return "float";
+            else return "int";
+        } else if (token.kind == SimpleParserConstants.CHAR_LITERAL) {
+            return "char";
+        } else if (token.kind == SimpleParserConstants.IDENTIFIER) {
+            String t = lookup(token.image);
+            if (t == null) throw new ParseException("Erro semântico: variável ou função " + token.image + " não declarada.");
+            return t;
+        } else if (token.kind == SimpleParserConstants.LITERAL) {
+            return "string";
+        } else {
+            throw new ParseException("Erro semântico: expressão não suportada para atribuição.");
+        }
+    }
+
     public ArrayList<ModelToken> getTokens(InputStream codigo) throws ParseException {
         var tokens = new ArrayList<ModelToken>();
-        this.ReInit(codigo); 
+        this.ReInit(codigo);
         while (true) {
             Token token = this.getNextToken();
 
@@ -166,6 +187,15 @@ TOKEN : {
 }
 
 TOKEN : {
+    < CHAR_LITERAL: "'" (~["'"])+ "'" >
+    {
+        if (matchedToken.image.length() != 3) {
+            throw new TokenMgrError("Erro semântico: literal de char inválido: " + matchedToken.image, TokenMgrError.LEXICAL_ERROR);
+        }
+    }
+}
+
+TOKEN : {
     < #ANY_CHAR: ["\u0000"-"\uFFFF"] >
 }
 
@@ -176,9 +206,21 @@ TOKEN : {
     }
 }
 
+// Cria o escopo global
 void Start() : {} {
     { symbolTable.push(new HashMap<String, String>()); }
     Programa() <EOF>
+}
+
+void ListaID() : {} {
+    <IDENTIFIER> DeclaracaoParam2() ListaIDTail()
+}
+
+void ListaIDTail() :{} {
+    (
+        <SEMICOLON>
+    |   <COMMA> ListaID()
+    )
 }
 
 void Programa() : {} {
@@ -188,11 +230,20 @@ void Programa() : {} {
       | {} // Produção vazia para permitir fim do programa
     )
 }
-
-void Declaracao() : { Token id; } {
-    Especificador() Tipo() id=<IDENTIFIER>
+void Programa2() : {} {
     (
-        <LPAREN> 
+        <SEMICOLON> Programa()
+      | <LBRACKET> <NUMBER> <RBRACKET> <SEMICOLON> Programa()
+      | <LPAREN> ListaParametros() <RPAREN> Bloco() Programa()
+      | <COMMA> ListaID() Programa()
+    )
+}
+// Na declaração, o tipo é obtido a partir de Tipo() e armazenado para verificação em atribuições
+void Declaracao() : { Token id; String t = null; } {
+    Especificador() t=Tipo() id=<IDENTIFIER>
+    (
+        // Definição de função
+        <LPAREN>
             {
                 if (lookupInGlobal(id.image) != null) {
                     throw new ParseException("Erro semântico: função " + id.image + " já declarada.");
@@ -200,27 +251,37 @@ void Declaracao() : { Token id; } {
                 symbolTable.firstElement().put(id.image, "func");
                 symbolTable.push(new HashMap<String, String>());
             }
-            ListaParametros() <RPAREN> Bloco() 
-            { 
-                symbolTable.pop(); 
-            }
+            ListaParametros() <RPAREN> Bloco()
+            { symbolTable.pop(); }
       |
+        // Declaração de variável
             {
                 if (lookupInCurrentScope(id.image) != null) {
                     throw new ParseException("Erro semântico: variável " + id.image + " já declarada.");
                 }
-                symbolTable.peek().put(id.image, "var");
+                symbolTable.peek().put(id.image, t);
+                currentDeclaredType = t;
+                currentDeclaredVar = id.image;
             }
             Declaracao2() <SEMICOLON>
     )
 }
 
+
 void Declaracao2() : {} {
     (
         <LBRACKET> <NUMBER> <RBRACKET> atribArray() // Array
-      | <LPAREN> ListaParametros() <RPAREN> Bloco() // Função
-      | OperadorAtrib() Expr() // Atribuições simples e compostas
-      | {} // Produção vazia para declaração simples
+      | // Atribuição simples ou composta
+          {
+              Token initToken = getToken(2);
+              String exprType = computeExprType(initToken);
+              if (!currentDeclaredType.equals(exprType)) {
+                  throw new ParseException("Erro semântico: tipo incompatível na atribuição para a variável " 
+                      + currentDeclaredVar + ". Esperado: " + currentDeclaredType + ", encontrado: " + exprType);
+              }
+          }
+          OperadorAtrib() Expr()
+      | {} // Declaração sem atribuição
     )
 }
 
@@ -228,6 +289,7 @@ void Especificador() : {} {
     ( <AUTO> | <STATIC> | <EXTERN> | <CONST> )?
 }
 
+// Para arrays, não há verificação de tipo na inicialização neste exemplo
 void atribArray() : {} {
     (
         OperadorAtrib() <LBRACE> listaNum() <RBRACE>
@@ -241,13 +303,18 @@ void listaNum() : {} {
     )?
 }
 
-void Tipo() : {} {
+// A produção Tipo() agora retorna o tipo declarado
+String Tipo() : { String type = ""; } {
     (
-        <VOID> | <CHAR> | <FLOAT> | <DOUBLE>
-      | <SIGNED> Inteiro()
-      | <UNSIGNED> Inteiro()
-      | Inteiro()
+        <VOID>    { type = "void"; }
+      | <CHAR>    { type = "char"; }
+      | <FLOAT>   { type = "float"; }
+      | <DOUBLE>  { type = "double"; }
+      | <SIGNED>  Inteiro() { type = "int"; }
+      | <UNSIGNED>Inteiro() { type = "int"; }
+      | Inteiro()  { type = "int"; }
     )
+    { return type; }
 }
 
 void Inteiro() : {} {
@@ -258,13 +325,13 @@ void ListaParametros() : {} {
     ( DeclaracaoParam() ( <COMMA> DeclaracaoParam() )* )?
 }
 
-void DeclaracaoParam() : { Token id; } {
-    Tipo() id=<IDENTIFIER> DeclaracaoParam2()
+void DeclaracaoParam() : { Token id; String t = null; } {
+    Tipo() { t = /* tipo obtido de Tipo() */ ""; } id=<IDENTIFIER> DeclaracaoParam2()
     {
          if (lookupInCurrentScope(id.image) != null) {
              throw new ParseException("Erro semântico: parâmetro " + id.image + " já declarado.");
          }
-         symbolTable.peek().put(id.image, "param");
+         symbolTable.peek().put(id.image, t);
     }
 }
 
@@ -316,6 +383,7 @@ void OperadorAtrib() : {} {
     ( <ASSIGN> | <MUL_ASSIGN> | <DIV_ASSIGN> | <MOD_ASSIGN> | <PLUS_ASSIGN> | <MINUS_ASSIGN> )
 }
 
+// As produções abaixo de expressão não foram alteradas para propagação de tipos para manter a simplicidade
 void Expr() : {} {
     ExprOr()
 }
@@ -348,19 +416,29 @@ void ExprUnaria() : {} {
     ( <ADD> | <SUB> )? ExprPrimaria()
 }
 
-void ExprPrimaria() : { Token id; } {
-    id=<IDENTIFIER>
-    {
-         if (lookup(id.image) == null) {
-             throw new ParseException("Erro semântico: variável ou função " + id.image + " não declarada.");
+void ExprPrimaria() : {} {
+    (
+      <IDENTIFIER>
+      {
+         if (lookup(token.image) == null) {
+             throw new ParseException("Erro semântico: variável ou função " + token.image + " não declarada.");
          }
-    }
-    ( <LBRACKET> Expr() <RBRACKET> | <LPAREN> ExprLista() <RPAREN> )?
-  | <NUMBER>
-  | <LITERAL>
-  | <LPAREN> Expr() <RPAREN>
+      }
+      (
+         LOOKAHEAD( <LPAREN> )
+           <LPAREN> ExprLista() <RPAREN>
+       |  LOOKAHEAD( <LBRACKET> )
+           <LBRACKET> Expr() <RBRACKET>
+       |  { /* não há chamada nem acesso a array */ }
+      )
+    | <NUMBER>
+    | <CHAR_LITERAL>
+    | <LITERAL>
+    | <LPAREN> Expr() <RPAREN>
+    )
 }
 
+
 void ExprLista() : {} {
-    ( Expr() ( <COMMA> Expr() )* )? // Torna opcional a presença de argumentos
+    ( Expr() ( <COMMA> Expr() )* )?
 }

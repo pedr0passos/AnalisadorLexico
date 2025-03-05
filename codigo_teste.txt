@@ -1,0 +1,26 @@
+#define X 1 
+#define Y 10 
+
+void main () {
+
+	int x = 1;
+	float y;
+	double w;
+	char z;
+	short a;
+	long b;
+	 
+	if (x > 5) {
+		funcao(x,w);
+	} else {
+
+	}
+
+	funcao2(); 
+}
+
+int funcao (int x, int y) {
+	int retorno;
+	retorno = x * y / 2;
+	return retorno;
+}
