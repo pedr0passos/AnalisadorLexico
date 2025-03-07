@@ -24,6 +24,8 @@ public class SimpleParser {
     public String currentDeclaredType = null;
     public String currentDeclaredVar = null;
 
+    private boolean dentroDeLoop = false;
+
     public void analisar() throws ParseException {
         this.Start();
     }
@@ -351,10 +353,43 @@ void Instrucoes() : {} {
       | <RETURN> Expr() <SEMICOLON>
       | <PRINTF> <LPAREN> Expr() <RPAREN> <SEMICOLON>
       | <SCANF> <LPAREN> <IDENTIFIER> <RPAREN> <SEMICOLON>
-      | <BREAK> <SEMICOLON>
+      | <BREAK> 
+        {
+                if (dentroDeLoop == false) {
+                    throw new ParseException("Erro: 'break' só pode ser usado dentro de loops (while/for).");
+                }
+                
+        }
+         <SEMICOLON>
       | <IF> <LPAREN> Expr() <RPAREN> Instrucoes() ( <ELSE> Instrucoes() )?
-      | <WHILE> <LPAREN> Expr() <RPAREN> Instrucoes()
-      | <FOR> <LPAREN> Expr() <SEMICOLON> Expr() <SEMICOLON> Expr() <RPAREN> Instrucoes()
+      | <WHILE> 
+        {
+                if (dentroDeLoop == false) {
+                    dentroDeLoop = true;
+                }
+                
+        }
+        <LPAREN> Expr() <RPAREN> Instrucoes()
+        {
+                if (dentroDeLoop == true) {
+                    dentroDeLoop = false;
+                }
+                
+        }
+      | <FOR> 
+       {
+                if (dentroDeLoop == false) {
+                    dentroDeLoop = true;
+                }
+                
+       }
+        <LPAREN> Expr() <SEMICOLON> Expr() <SEMICOLON> Expr() <RPAREN> Instrucoes()
+        {
+                if (dentroDeLoop == true) {
+                    dentroDeLoop = false;
+                }
+                
+        }
       | Bloco()
       | Declaracao()
     )
