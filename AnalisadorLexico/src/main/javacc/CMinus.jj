@@ -156,6 +156,7 @@ TOKEN : {
   | < WHILE: "while" >
   | < FOR: "for" >
   | < BREAK: "break" >
+  | < CONTINUE: "continue" >
   | < IF: "if" >
   | < ELSE: "else" >
   | < OR: "||" >
@@ -360,6 +361,14 @@ void Instrucoes() : {} {
                 }
                 
         }
+         <SEMICOLON>
+       | <CONTINUE> 
+         {
+                if (dentroDeLoop == false) {
+                    throw new ParseException("Erro: 'continue' só pode ser usado dentro de loops (while/for).");
+                }
+
+            }
          <SEMICOLON>
       | <IF> <LPAREN> Expr() <RPAREN> Instrucoes() ( <ELSE> Instrucoes() )?
       | <WHILE> 
