@@ -350,54 +350,61 @@ void Bloco() : {} {
 
 void Instrucoes() : {} {
     (
-        <IDENTIFIER> Expressao() <SEMICOLON>
+        <IDENTIFIER> 
+        {
+            // Check if identifier exists
+            if (lookup(token.image) == null) {
+                throw new ParseException("Erro semântico: variável " + token.image + " não declarada.");
+            }
+        }
+        (
+            // Handle assignment statements
+            OperadorAtrib() Expr() <SEMICOLON>
+            |
+            // Handle function calls
+            <LPAREN> ExprLista() <RPAREN> <SEMICOLON>
+        )
       | <RETURN> Expr() <SEMICOLON>
       | <PRINTF> <LPAREN> Expr() <RPAREN> <SEMICOLON>
       | <SCANF> <LPAREN> <IDENTIFIER> <RPAREN> <SEMICOLON>
       | <BREAK> 
         {
-                if (dentroDeLoop == false) {
-                    throw new ParseException("Erro: 'break' só pode ser usado dentro de loops (while/for).");
-                }
-                
+            if (dentroDeLoop == false) {
+                throw new ParseException("Erro: 'break' só pode ser usado dentro de loops (while/for).");
+            }
         }
-         <SEMICOLON>
+        <SEMICOLON>
        | <CONTINUE> 
          {
-                if (dentroDeLoop == false) {
-                    throw new ParseException("Erro: 'continue' só pode ser usado dentro de loops (while/for).");
-                }
-
+            if (dentroDeLoop == false) {
+                throw new ParseException("Erro: 'continue' só pode ser usado dentro de loops (while/for).");
             }
-         <SEMICOLON>
+        }
+        <SEMICOLON>
       | <IF> <LPAREN> Expr() <RPAREN> Instrucoes() ( <ELSE> Instrucoes() )?
       | <WHILE> 
         {
-                if (dentroDeLoop == false) {
-                    dentroDeLoop = true;
-                }
-                
+            if (dentroDeLoop == false) {
+                dentroDeLoop = true;
+            }
         }
         <LPAREN> Expr() <RPAREN> Instrucoes()
         {
-                if (dentroDeLoop == true) {
-                    dentroDeLoop = false;
-                }
-                
+            if (dentroDeLoop == true) {
+                dentroDeLoop = false;
+            }
         }
       | <FOR> 
        {
-                if (dentroDeLoop == false) {
-                    dentroDeLoop = true;
-                }
-                
+            if (dentroDeLoop == false) {
+                dentroDeLoop = true;
+            }
        }
         <LPAREN> Expr() <SEMICOLON> Expr() <SEMICOLON> Expr() <RPAREN> Instrucoes()
         {
-                if (dentroDeLoop == true) {
-                    dentroDeLoop = false;
-                }
-                
+            if (dentroDeLoop == true) {
+                dentroDeLoop = false;
+            }
         }
       | Bloco()
       | Declaracao()
