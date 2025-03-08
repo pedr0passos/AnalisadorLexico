@@ -72,7 +72,6 @@ public class SimpleParser {
         return null;
     }
 
-    // Método auxiliar para determinar o tipo de uma expressão simples
     public String computeExprType(Token token) throws ParseException {
         if (token.kind == SimpleParserConstants.NUMBER) {
             if (token.image.indexOf('.') >= 0) return "float";
@@ -205,7 +204,8 @@ TOKEN : {
 TOKEN : {
     < INVALID: <ANY_CHAR> >
     {
-        throw new TokenMgrError("Erro léxico: caractere inválido \"" + matchedToken.image + "\" encontrado.", TokenMgrError.LEXICAL_ERROR);
+        if (true)
+            throw new TokenMgrError("Erro léxico: caractere inválido \"" + matchedToken.image + "\" encontrado.", TokenMgrError.LEXICAL_ERROR);
     }
 }
 
