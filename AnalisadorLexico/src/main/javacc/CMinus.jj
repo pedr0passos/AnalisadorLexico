@@ -274,7 +274,7 @@ void Declaracao() : { Token id; String t = null; } {
 void Declaracao2() : {} {
     (
         <LBRACKET> <NUMBER> <RBRACKET> atribArray() // Array
-      | // Atribuição simples ou composta
+      | 
           {
               Token initToken = getToken(2);
               String exprType = computeExprType(initToken);
@@ -354,7 +354,7 @@ void Instrucoes() : {} {
         {
             // Check if identifier exists
             if (lookup(token.image) == null) {
-                throw new ParseException("Erro semântico: variável " + token.image + " não declarada.");
+                throw new ParseException("Erro semântico: variável ou função " + token.image + " não declarada.");
             }
         }
         (
@@ -467,20 +467,26 @@ void ExprUnaria() : {} {
     ( <ADD> | <SUB> )? ExprPrimaria()
 }
 
-void ExprPrimaria() : {} {
+void ExprPrimaria() : {Token tokenId; } {
     (
-      <IDENTIFIER>
+      tokenId = <IDENTIFIER>
       {
-         if (lookup(token.image) == null) {
+        String nameId = tokenId.image;
+        String typeId = lookup(nameId);
+         if (typeId == null) {
              throw new ParseException("Erro semântico: variável ou função " + token.image + " não declarada.");
          }
       }
       (
          LOOKAHEAD( <LPAREN> )
-           <LPAREN> ExprLista() <RPAREN>
+           <LPAREN> ExprLista() <RPAREN> {
+                if (!typeId.equals("func")) {
+                    throw new ParseException("Erro semântico: " + nameId + " não é uma função.");
+                }
+            }
        |  LOOKAHEAD( <LBRACKET> )
            <LBRACKET> Expr() <RBRACKET>
-       |  { /* não há chamada nem acesso a array */ }
+       |  { }
       )
     | <NUMBER>
     | <CHAR_LITERAL>
